@@ -18,7 +18,7 @@ type Camera = {
   lastSeen?: string
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) => fetch(url).then((r) => r.json()).then((data) => data.cameras || [])
 
 function LocalDeviceFeed({ camera }: { camera: Camera }) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -325,8 +325,18 @@ function CameraCard({ cam }: { cam: Camera }) {
 }
 
 export default function CameraGrid() {
-  const { data, error, isLoading } = useSWR<Camera[]>("/api/cameras", fetcher)
+  const { data, error, isLoading, mutate } = useSWR<Camera[]>("/api/cameras", fetcher)
   const { editCamera, isScreenSharing } = useCameraContext()
+  
+  // Listen for camera refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      mutate() // This will refetch the data
+    }
+    
+    window.addEventListener('cameras:refresh', handleRefresh)
+    return () => window.removeEventListener('cameras:refresh', handleRefresh)
+  }, [mutate])
   
   // Ensure cameras is always an array
   const cameras = Array.isArray(data) ? data : []
