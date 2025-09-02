@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Update the log entry if videoLogId is provided
+    // Update the log entry if videoLogId is provided, otherwise create a new detection log
     if (videoLogId) {
       await logs.updateOne(
         { _id: new ObjectId(videoLogId) },
@@ -122,6 +122,47 @@ export async function POST(req: Request) {
           }
         }
       )
+    } else {
+      // Create a new standalone detection log
+      const newLogEntry = {
+        cameraId: cam._id,
+        userId: user._id,
+        type: "anomaly" as const,
+        timestamp: detection.timestamp,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: "new" as const,
+        severity: detection.severity,
+        resolved: false,
+        detections: [{
+          label: detection.label,
+          detected_class: detection.detected_class,
+          confidence: detection.confidence,
+          severity: detection.severity,
+          timestamp: detection.timestamp,
+          is_anomaly: detection.is_anomaly
+        }],
+        frames: [{
+          timestamp: detection.timestamp,
+          frameTimeSec: detection.frameTimeSec,
+          is_anomaly: detection.is_anomaly,
+          detected_class: detection.detected_class,
+          label: detection.label,
+          confidence: detection.confidence,
+          severity: detection.severity
+        }],
+        data: {
+          detected_class: detection.detected_class,
+          is_anomaly: detection.is_anomaly,
+          confidence: detection.confidence,
+          description: `Frame detection: ${detection.label}`
+        },
+        videoUrl: null,
+        snapshotUrl: null
+      }
+
+      const logResult = await logs.insertOne(newLogEntry as any)
+      detection.logId = logResult.insertedId.toString()
     }
 
     return NextResponse.json(detection)
