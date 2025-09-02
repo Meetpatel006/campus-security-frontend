@@ -105,23 +105,23 @@ function LocalDeviceFeed({ camera }: { camera: Camera }) {
   }
 
   return (
-    <div className="relative border border-white/20">
-      <video ref={videoRef} className="w-full h-auto" muted playsInline />
+    <div className="relative bg-black min-h-48">
+      <video ref={videoRef} className="w-full h-auto object-contain" muted playsInline />
       <div className="absolute top-2 right-2 flex gap-2">
         <Button
           size="sm"
           variant={isDetecting ? "destructive" : "default"}
           onClick={toggleDetection}
-          className="text-xs"
+          className="text-xs h-7 px-2 bg-black/60 hover:bg-black/80 border-gray-600"
         >
           {isDetecting ? "🔴 Stop" : "▶️ Detect"}
         </Button>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-2 text-xs text-white">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 text-xs text-white">
         <div className="flex justify-between items-center">
-          <span>Live Detection: {isDetecting ? "ON" : "OFF"}</span>
+          <span className="font-medium">Live Detection: <span className={isDetecting ? "text-green-400" : "text-gray-400"}>{isDetecting ? "ON" : "OFF"}</span></span>
           {lastDetection && (
-            <span className={lastDetection.is_anomaly ? "text-red-400" : "text-green-400"}>
+            <span className={`font-medium ${lastDetection.is_anomaly ? "text-red-400" : "text-green-400"}`}>
               {lastDetection.detected_class} ({Math.round(lastDetection.confidence * 100)}%)
             </span>
           )}
@@ -198,11 +198,11 @@ function StreamVideoFeed({ camera }: { camera: Camera }) {
   }, [])
 
   return (
-    <div className="relative">
+    <div className="relative bg-black min-h-48">
       <video 
         ref={videoRef}
         src={camera.streamUrl} 
-        className="w-full h-auto" 
+        className="w-full h-auto object-contain" 
         controls
         onLoadedData={() => {
           // Auto-start detection when video loads
@@ -216,16 +216,16 @@ function StreamVideoFeed({ camera }: { camera: Camera }) {
           size="sm"
           variant={isDetecting ? "destructive" : "default"}
           onClick={toggleDetection}
-          className="text-xs"
+          className="text-xs h-7 px-2 bg-black/60 hover:bg-black/80 border-gray-600"
         >
           {isDetecting ? "🔴 Stop" : "▶️ Detect"}
         </Button>
       </div>
       {lastDetection && (
-        <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-2 text-xs text-white">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 text-xs text-white">
           <div className="flex justify-between items-center">
-            <span>Detection: {isDetecting ? "ON" : "OFF"}</span>
-            <span className={lastDetection.is_anomaly ? "text-red-400" : "text-green-400"}>
+            <span className="font-medium">Detection: <span className={isDetecting ? "text-green-400" : "text-gray-400"}>{isDetecting ? "ON" : "OFF"}</span></span>
+            <span className={`font-medium ${lastDetection.is_anomaly ? "text-red-400" : "text-green-400"}`}>
               {lastDetection.detected_class} ({Math.round(lastDetection.confidence * 100)}%)
             </span>
           </div>
@@ -236,37 +236,79 @@ function StreamVideoFeed({ camera }: { camera: Camera }) {
 }
 
 function ScreenShareCard() {
-  const { isScreenSharing, toggleScreenShare } = useCameraContext()
+  const { isScreenSharing, toggleScreenShare, screenStream } = useCameraContext()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  
+  useEffect(() => {
+    if (videoRef.current && screenStream) {
+      videoRef.current.srcObject = screenStream
+      videoRef.current.play().catch(console.error)
+    }
+  }, [screenStream])
   
   return (
-    <div className="relative group bg-gray-900 rounded-lg overflow-hidden border-2 border-dashed border-gray-700 hover:border-blue-500 transition-colors h-64 flex flex-col">
-      <div className="flex-1 flex items-center justify-center bg-gray-900/50">
-        <div className="text-center p-4">
-          <div className="mx-auto w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-3">
-            <ScreenShare className="w-6 h-6 text-blue-400" />
+    <div className="relative group bg-gray-900 rounded-lg overflow-hidden border-2 border-dashed border-gray-700 hover:border-blue-500 transition-colors min-h-64 flex flex-col">
+      {isScreenSharing && screenStream ? (
+        <div className="relative flex-1 bg-black">
+          {/* Header with title and status */}
+          <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-medium">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  LIVE
+                </div>
+                <span className="text-white font-medium text-sm">Screen Share</span>
+              </div>
+              <ScreenShare className="w-4 h-4 text-white/70" />
+            </div>
           </div>
-          <h3 className="text-lg font-medium text-white">Screen Share</h3>
-          <p className="text-sm text-gray-400 mt-1">Share your screen with the team</p>
-        </div>
-      </div>
-      <div className="p-4 bg-gray-800/50 border-t border-gray-700">
-        <Button
-          onClick={toggleScreenShare}
-          className={`w-full ${isScreenSharing ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-        >
-          {isScreenSharing ? (
-            <>
+          
+          {/* Video content */}
+          <div className="relative w-full h-full min-h-48">
+            <video 
+              ref={videoRef}
+              className="w-full h-full object-contain bg-black"
+              autoPlay
+              muted
+              playsInline
+            />
+          </div>
+          
+          {/* Bottom controls overlay */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+            <Button
+              onClick={toggleScreenShare}
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white border-none"
+            >
               <VideoOff className="w-4 h-4 mr-2" />
               Stop Sharing
-            </>
-          ) : (
-            <>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex-1 flex items-center justify-center bg-gray-900/50 p-6">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-500/30 transition-colors">
+                <ScreenShare className="w-8 h-8 text-blue-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Screen Share</h3>
+              <p className="text-sm text-gray-400 leading-relaxed">Share your screen with the team for real-time collaboration</p>
+            </div>
+          </div>
+          <div className="p-4 bg-gray-800/50 border-t border-gray-700">
+            <Button
+              onClick={toggleScreenShare}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white border-none transition-colors"
+            >
               <Video className="w-4 h-4 mr-2" />
               Start Screen Share
-            </>
-          )}
-        </Button>
-      </div>
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -292,28 +334,39 @@ function CameraCard({ cam }: { cam: Camera }) {
   }, [isLocal])
 
   return (
-    <div className="relative border border-white/30">
-      <div className="p-2 flex items-center justify-between border-b border-white/10">
-        <div>
-          <div className="font-semibold">{cam.name}</div>
-          <div className="text-xs text-white/60">{cam.location}</div>
+    <div className="relative bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-gray-600 transition-colors">
+      <div className="p-3 flex items-center justify-between bg-gray-800/50 border-b border-gray-700">
+        <div className="flex-1">
+          <div className="font-semibold text-white text-sm">{cam.name}</div>
+          <div className="text-xs text-gray-400">{cam.location}</div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-4">
-            <span className="inline-flex items-center gap-1 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-xs">
               <span
-                className={`inline-block h-2 w-2 rounded-full ${status === "active" ? "bg-white" : "border border-white"}`}
+                className={`inline-block h-2 w-2 rounded-full ${
+                  status === "active" 
+                    ? "bg-green-400 shadow-green-400/50 shadow-sm" 
+                    : "bg-gray-500"
+                }`}
                 aria-hidden="true"
               />
-              <span className="text-white/70">{status === "active" ? "Online" : "Offline"}</span>
+              <span className={`font-medium ${status === "active" ? "text-green-400" : "text-gray-400"}`}>
+                {status === "active" ? "Online" : "Offline"}
+              </span>
             </span>
-            <Button variant="outline" size="sm" onClick={() => editCamera(cam)}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => editCamera(cam)}
+              className="h-7 px-2 text-xs border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
+            >
               Edit
             </Button>
           </div>
         </div>
       </div>
-      <div className="relative">
+      <div className="relative bg-black">
         {isLocal ? (
           <LocalDeviceFeed camera={cam} />
         ) : (
@@ -326,7 +379,7 @@ function CameraCard({ cam }: { cam: Camera }) {
 
 export default function CameraGrid() {
   const { data, error, isLoading, mutate } = useSWR<Camera[]>("/api/cameras", fetcher)
-  const { editCamera, isScreenSharing } = useCameraContext()
+  const { editCamera, isScreenSharing, screenStream } = useCameraContext()
   
   // Listen for camera refresh events
   useEffect(() => {
