@@ -41,6 +41,10 @@ export async function POST(req: Request) {
     console.log(`✅ External API response: ${result.is_anomaly ? 'ANOMALY' : 'NORMAL'} - ${result.detected_class}`)
 
     // Store results in database
+    const severity: "low" | "medium" | "high" | "critical" = result.is_anomaly 
+      ? (result.confidence > 0.8 ? "high" : "medium")
+      : "low"
+    
     const logEntry = {
       cameraId: cam._id,
       userId: user._id,
@@ -49,6 +53,7 @@ export async function POST(req: Request) {
       status: "new" as const,
       createdAt: new Date(),
       updatedAt: new Date(),
+      severity,
       data: {
         videoUrl: result.video_url,
         detected_class: result.detected_class,
@@ -56,10 +61,12 @@ export async function POST(req: Request) {
         confidence: result.confidence
       },
       detections: [{
-        is_anomaly: result.is_anomaly,
-        detected_class: result.detected_class,
-        confidence: result.confidence,
-        timestamp: new Date(result.timestamp)
+        label: result.detected_class || "Unknown",
+        detected_class: result.detected_class || "Unknown",
+        confidence: result.confidence || 0,
+        severity,
+        timestamp: new Date(result.timestamp || Date.now()),
+        is_anomaly: result.is_anomaly
       }],
       frames: [],
       videoUrl: result.video_url,

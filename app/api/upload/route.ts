@@ -37,13 +37,21 @@ export async function POST(req: Request) {
   const insertRes = await logs.insertOne({
     cameraId: cam._id,
     userId: user._id,
+    type: "video_upload",
     detections: [],
     snapshotUrl: null,
     videoUrl,
     timestamp: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    status: "new",
     resolved: false,
     frames: [],
-  })
+    data: {
+      videoUrl,
+      description: "Video uploaded for processing"
+    }
+  } as any)
 
   return NextResponse.json({ ok: true, videoUrl, logId: insertRes.insertedId.toString() })
 }

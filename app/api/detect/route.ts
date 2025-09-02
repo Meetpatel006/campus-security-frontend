@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { getDb } from "@/lib/db"
 import { ObjectId } from "mongodb"
+import { apiClient } from "@/lib/api-client"
 
 const EXTERNAL_API_BASE = "https://gcet--campus-safety-fastapi-app-dev.modal.run"
 
@@ -26,21 +27,66 @@ export async function POST(req: Request) {
     const cam = await cameras.findOne({ _id: new ObjectId(camera_id), ownerId: user._id })
     if (!cam) return NextResponse.json({ detail: "Camera not found" }, { status: 404 })
 
-    // For frame analysis, we'll store the detection result in the database
-    // In a real scenario, you might want to batch these or process differently
+    // For frame analysis, call the real external API
+    console.log(`🎯 Calling external API for frame detection...`)
     
-    // For now, let's just store the frame data and return a mock detection
-    // You would replace this with actual API call to your ML service
+    let detection: any
     
-    const detection = {
-      frameTimeSec: frameTimeSec || 0,
-      timestamp: new Date(timestamp || Date.now()),
-      frame_data: frame_data,
-      camera_id: camera_id,
-      // Mock detection result - replace with actual API call
-      is_anomaly: Math.random() > 0.8, // 20% chance of anomaly for demo
-      detected_class: "Normal",
-      confidence: 0.95
+    try {
+      // Call external API for frame detection
+      const apiResult = await apiClient.detectFrame({
+        frame_data,
+        camera_id: parseInt(camera_id),
+        location: cam.location || "Unknown",
+        timestamp,
+        videoLogId,
+        frameTimeSec
+      })
+
+      console.log(`✅ External API response: ${apiResult.is_anomaly ? 'ANOMALY' : 'NORMAL'} - ${apiResult.detected_class}`)
+
+      // Map API response to our format
+      const severity: "low" | "medium" | "high" | "critical" = apiResult.is_anomaly 
+        ? (apiResult.confidence > 0.8 ? "high" : "medium") 
+        : "low"
+      
+      detection = {
+        frameTimeSec: apiResult.frameTimeSec || frameTimeSec || 0,
+        timestamp: new Date(timestamp || Date.now()),
+        frame_data: frame_data,
+        camera_id: camera_id,
+        is_anomaly: apiResult.is_anomaly,
+        detected_class: apiResult.detected_class,
+        label: apiResult.detected_class,
+        confidence: apiResult.confidence,
+        severity: severity,
+        external_api_response: apiResult.external_api_response
+      }
+
+    } catch (apiError) {
+      console.error("External API error, falling back to mock detection:", apiError)
+      
+      // Fallback to mock detection if API fails
+      const isAnomaly = Math.random() > 0.8 // 20% chance of anomaly for demo
+      const detectedClass = isAnomaly ? "Suspicious Activity" : "Normal"
+      const confidence = 0.85 + Math.random() * 0.15 // 0.85-1.0
+      const severity: "low" | "medium" | "high" | "critical" = isAnomaly 
+        ? (confidence > 0.9 ? "high" : "medium") 
+        : "low"
+      
+      detection = {
+        frameTimeSec: frameTimeSec || 0,
+        timestamp: new Date(timestamp || Date.now()),
+        frame_data: frame_data,
+        camera_id: camera_id,
+        is_anomaly: isAnomaly,
+        detected_class: detectedClass,
+        label: detectedClass,
+        confidence: confidence,
+        severity: severity,
+        fallback: true,
+        error: apiError instanceof Error ? apiError.message : "API Error"
+      }
     }
 
     // Update the log entry if videoLogId is provided
@@ -54,8 +100,25 @@ export async function POST(req: Request) {
               frameTimeSec: detection.frameTimeSec,
               is_anomaly: detection.is_anomaly,
               detected_class: detection.detected_class,
-              confidence: detection.confidence
+              label: detection.label,
+              confidence: detection.confidence,
+              severity: detection.severity
             }
+          },
+          $set: {
+            updatedAt: new Date(),
+            // Update main detection if this frame has higher confidence
+            ...(detection.is_anomaly && {
+              detections: [{
+                label: detection.label,
+                detected_class: detection.detected_class,
+                confidence: detection.confidence,
+                severity: detection.severity,
+                timestamp: detection.timestamp,
+                is_anomaly: detection.is_anomaly
+              }],
+              severity: detection.severity
+            })
           }
         }
       )

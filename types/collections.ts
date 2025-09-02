@@ -46,7 +46,9 @@ export interface LogDocument {
   detections?: Array<{
     is_anomaly: boolean
     detected_class: string
+    label: string
     confidence: number
+    severity?: "low" | "medium" | "high" | "critical"
     timestamp: Date
   }>
   frames?: Array<{
@@ -54,12 +56,15 @@ export interface LogDocument {
     frameTimeSec: number
     is_anomaly: boolean
     detected_class: string
+    label?: string
     confidence: number
+    severity?: "low" | "medium" | "high" | "critical"
   }>
   videoUrl?: string
   snapshotUrl?: string | null
   resolved?: boolean
   externalVideoId?: string
+  severity?: "low" | "medium" | "high" | "critical"
 }
 
 export interface AlertDocument {
