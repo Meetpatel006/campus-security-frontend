@@ -15,22 +15,33 @@ export function FeatureCard({ feature, className, ...props }: FeatureCardProps) 
 	const p = genRandomPattern();
 
 	return (
-		<div className={cn('relative overflow-hidden p-6', className)} {...props}>
+		<div className={cn('relative overflow-hidden p-6 group', className)} {...props}>
+			{/* Grid Pattern Background */}
 			<div className="pointer-events-none absolute top-0 left-1/2 -mt-2 -ml-20 h-full w-full [mask-image:linear-gradient(white,transparent)]">
-				<div className="from-foreground/5 to-foreground/1 absolute inset-0 bg-gradient-to-r [mask-image:radial-gradient(farthest-side_at_top,white,transparent)] opacity-100">
+				<div className="absolute inset-0 bg-gradient-to-r from-white/5 to-white/1 [mask-image:radial-gradient(farthest-side_at_top,white,transparent)] opacity-100">
 					<GridPattern
 						width={20}
 						height={20}
 						x="-12"
 						y="4"
 						squares={p}
-						className="fill-foreground/5 stroke-foreground/25 absolute inset-0 h-full w-full mix-blend-overlay"
+						className="absolute inset-0 h-full w-full mix-blend-overlay fill-white/5 stroke-white/25"
 					/>
 				</div>
 			</div>
-			<feature.icon className="text-foreground/75 size-6" strokeWidth={1} aria-hidden />
-			<h3 className="mt-10 text-sm md:text-base">{feature.title}</h3>
-			<p className="text-muted-foreground relative z-20 mt-2 text-xs font-light">{feature.description}</p>
+			
+			{/* Icon Container */}
+			<div className="relative z-10 mb-4">
+				<div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+					<feature.icon className="w-6 h-6 text-blue-400 group-hover:text-blue-300 transition-colors" strokeWidth={1.5} aria-hidden />
+				</div>
+			</div>
+			
+			{/* Content */}
+			<div className="relative z-10">
+				<h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+				<p className="text-white/70 text-sm leading-relaxed">{feature.description}</p>
+			</div>
 		</div>
 	);
 }
