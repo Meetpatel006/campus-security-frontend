@@ -33,10 +33,31 @@ export type Detection = {
 }
 
 export const logsQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.preprocess(
+    (val) => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.number().int().min(1).optional()
+  ),
   // accept both "limit" and "pageSize"; normalize later in route
-  limit: z.coerce.number().int().min(1).max(100).default(20).optional(),
-  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.preprocess(
+    (val) => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.number().int().min(1).max(100).optional()
+  ),
+  pageSize: z.preprocess(
+    (val) => {
+      if (val === null || val === undefined || val === "") return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.number().int().min(1).max(100).optional()
+  ),
   cameraId: z.string().optional(),
   label: z.string().optional(),
   // new optional filters

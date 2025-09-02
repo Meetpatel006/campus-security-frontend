@@ -119,12 +119,22 @@ export async function POST(req: Request) {
         cameraId: new ObjectId(camera_id),
         userId: user._id,
         timestamp: detection.timestamp,
+        detections: [{
+          is_anomaly: detection.is_anomaly,
+          detected_class: detection.detected_class,
+          label: detection.detected_class,
+          confidence: detection.confidence,
+          severity: "high",
+          timestamp: detection.timestamp
+        }],
+        severity: "high",
         data: {
           detected_class: detection.detected_class,
           confidence: detection.confidence,
           description: `Frame anomaly detected: ${detection.detected_class}`
         },
         status: 'new',
+        resolved: false,
         createdAt: new Date(),
         updatedAt: new Date()
       } as any)

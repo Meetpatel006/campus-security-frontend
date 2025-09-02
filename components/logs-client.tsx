@@ -53,6 +53,17 @@ export default function LogsClient() {
 
   const { data: cams } = useCameras()
 
+  // Create a lookup map for camera names
+  const cameraNames = useMemo(() => {
+    const map = new Map()
+    if (cams?.data) {
+      cams.data.forEach(cam => {
+        map.set(cam.id, cam.name || cam.id)
+      })
+    }
+    return map
+  }, [cams?.data])
+
   const serverRows: any[] = data?.data ?? data?.items ?? []
   const mapped: Row[] = serverRows.map((doc: any) => {
     const id = String(doc._id ?? doc.id ?? "")
@@ -66,7 +77,7 @@ export default function LogsClient() {
     return {
       id,
       cameraId: cameraId || null,
-      label: top?.label ?? dets[0]?.label ?? "",
+      label: top?.label || top?.detected_class || dets[0]?.label || dets[0]?.detected_class || "",
       confidence:
         typeof top?.confidence === "number"
           ? top.confidence
@@ -232,7 +243,7 @@ export default function LogsClient() {
               {mapped.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{row.createdAt ? new Date(row.createdAt).toLocaleString() : "-"}</TableCell>
-                  <TableCell>{row.cameraId ?? "-"}</TableCell>
+                  <TableCell>{row.cameraId ? (cameraNames.get(row.cameraId) || row.cameraId) : "-"}</TableCell>
                   <TableCell className="max-w-xl truncate">{row.label || "-"}</TableCell>
                   <TableCell>{row.confidence != null ? `${Math.round(row.confidence * 100) / 100}` : "-"}</TableCell>
                   <TableCell className="capitalize">{row.severity ?? "-"}</TableCell>

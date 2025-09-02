@@ -31,11 +31,12 @@ function toCSV(rows: any[]) {
 export async function GET(req: Request) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 })
+  
   const url = new URL(req.url)
   const parsed = logsQuerySchema.safeParse({
-    page: url.searchParams.get("page"),
-    limit: url.searchParams.get("limit"),
-    pageSize: url.searchParams.get("pageSize"),
+    page: url.searchParams.get("page") || undefined,
+    limit: url.searchParams.get("limit") || undefined,
+    pageSize: url.searchParams.get("pageSize") || undefined,
     cameraId: url.searchParams.get("cameraId") || undefined,
     label: url.searchParams.get("label") || undefined,
     q: url.searchParams.get("q") || undefined,
@@ -47,11 +48,14 @@ export async function GET(req: Request) {
   if (!parsed.success) return NextResponse.json({ detail: parsed.error.flatten() }, { status: 422 })
 
   const { page, cameraId, label, q, severity, from, to, format } = parsed.data
-  // normalize limit from either limit or pageSize (default 20)
-  const limit = parsed.data.pageSize ?? parsed.data.limit ?? 20
+  // If no pagination parameters are provided, fetch all logs
+  const usePagination = page !== undefined || parsed.data.pageSize !== undefined || parsed.data.limit !== undefined
+  const limit = usePagination ? (parsed.data.pageSize ?? parsed.data.limit ?? 20) : undefined
+  const currentPage = page ?? 1
 
   const { logs } = await getDb()
   const query: any = { userId: user._id }
+  const orConditions: any[] = []
 
   if (cameraId) {
     try {
@@ -62,21 +66,32 @@ export async function GET(req: Request) {
   }
 
   if (label) {
-    query["detections.label"] = label
+    orConditions.push(
+      { "detections.label": label },
+      { "detections.detected_class": label }
+    )
   }
 
   // free-text search on detection labels (case-insensitive)
   if (q && q.trim()) {
-    query.$or = [
+    orConditions.push(
       { "detections.label": { $regex: q.trim(), $options: "i" } },
-      // optionally search a top-level message if your schema has it
-      { message: { $regex: q.trim(), $options: "i" } },
-    ]
+      { "detections.detected_class": { $regex: q.trim(), $options: "i" } },
+      { message: { $regex: q.trim(), $options: "i" } }
+    )
   }
 
   // severity filter: support either top-level severity or per-detection severity if present
   if (severity) {
-    query.$or = (query.$or || []).concat([{ severity }, { "detections.severity": severity }])
+    orConditions.push(
+      { severity },
+      { "detections.severity": severity }
+    )
+  }
+
+  // Add all OR conditions to the query
+  if (orConditions.length > 0) {
+    query.$or = orConditions
   }
 
   // date range on timestamp field (fallback to createdAt if your schema uses that)
@@ -88,12 +103,19 @@ export async function GET(req: Request) {
   }
 
   const total = await logs.countDocuments(query)
-  const items = await logs
+  
+  let mongoQuery = logs
     .find(query)
     .sort({ timestamp: -1, createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .toArray()
+  
+  // Only apply pagination if limit is defined
+  if (limit !== undefined) {
+    mongoQuery = mongoQuery
+      .skip((currentPage - 1) * limit)
+      .limit(limit)
+  }
+  
+  const items = await mongoQuery.toArray()
 
   if (format === "csv") {
     const csv = toCSV(items)
@@ -109,9 +131,10 @@ export async function GET(req: Request) {
   return NextResponse.json({
     items,
     data: items,
-    page,
-    limit,
+    page: currentPage,
+    limit: limit,
     pageSize: limit,
     total,
+    usePagination,
   })
 }

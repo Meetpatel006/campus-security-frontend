@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       status: "new" as const,
       createdAt: new Date(),
       updatedAt: new Date(),
+      severity: result.is_anomaly ? "high" : "low", // Add severity based on anomaly detection
       data: {
         videoUrl: video_url,
         detected_class: result.detected_class,
@@ -59,7 +60,9 @@ export async function POST(req: Request) {
       detections: [{
         is_anomaly: result.is_anomaly,
         detected_class: result.detected_class,
+        label: result.detected_class, // Add label field for frontend compatibility
         confidence: result.confidence,
+        severity: result.is_anomaly ? "high" : "low", // Add severity to detection
         timestamp: new Date(result.timestamp)
       }],
       frames: [],
