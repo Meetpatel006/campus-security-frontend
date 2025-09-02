@@ -118,7 +118,7 @@ export function AddCameraButton() {
   return (
     <>
       <button
-        className="border border-white px-3 py-1 hover:bg-white hover:text-black"
+        className="border border-white px-4 py-2 rounded-md hover:bg-white hover:text-black transition-colors"
         onClick={() => setIsModalOpen(true)}
       >
         Add Camera
