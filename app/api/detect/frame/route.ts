@@ -23,9 +23,22 @@ export async function POST(req: Request) {
 
     const { cameras, logs } = await getDb()
     
-    // Verify camera ownership
-    const cam = await cameras.findOne({ _id: new ObjectId(camera_id), ownerId: user._id })
-    if (!cam) return NextResponse.json({ detail: "Camera not found" }, { status: 404 })
+    // Handle screen sharing case or verify camera ownership
+    let cam = null;
+    if (camera_id === 'screen-share-default') {
+      // For screen sharing, create a virtual camera object
+      cam = {
+        _id: 'screen-share-default',
+        name: 'Screen Share',
+        type: 'screen-share',
+        location: 'Screen Capture',
+        ownerId: user._id
+      };
+    } else {
+      // Verify camera ownership for regular cameras
+      cam = await cameras.findOne({ _id: new ObjectId(camera_id), ownerId: user._id })
+      if (!cam) return NextResponse.json({ detail: "Camera not found" }, { status: 404 })
+    }
 
     // Call external ML API for frame detection
     let detectionResult
@@ -142,8 +155,8 @@ export async function POST(req: Request) {
       // Send email alert
       try {
         await sendAnomalyAlert(user._id.toString(), {
-          cameraName: cam.name,
-          location: cam.location,
+          cameraName: cam.name || 'Unknown Camera',
+          location: cam.location || 'Unknown Location',
           timestamp: detection.timestamp,
           description: `Frame anomaly detected: ${detection.detected_class}`
         })
