@@ -50,6 +50,7 @@
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
+    "framer-motion": "^12.23.12",
     "fs": "latest",
     "gcp-metadata": "latest",
     "geist": "latest",
